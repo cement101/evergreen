@@ -10,7 +10,8 @@ import {
   Sprout 
 } from 'lucide-react';
 
-import { INITIAL_BASINS, INITIAL_USERS } from './constants';
+import { INITIAL_USERS } from './constants';
+import { fetchReadings } from './services/apiService';
 import { User, Basin, ViewState, UserRole } from './types';
 import BasinOverview from './components/BasinOverview';
 import BasinDetail from './components/BasinDetail';
@@ -23,7 +24,51 @@ const App: React.FC = () => {
   // --- State ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [basins, setBasins] = useState<Basin[]>(INITIAL_BASINS);
+  const [basins, setBasins] = useState<Basin[]>([]);
+    // Fetch basins/telemetry from backend on load
+  React.useEffect(() => {
+    fetchReadings()
+      .then((readings) => {
+        // Group readings by basinId and get latest for each
+        const latestByBasin: Record<string, any> = {};
+        readings.forEach((r: any) => {
+          if (r.data && r.data.basinId) {
+            if (!latestByBasin[r.data.basinId] || new Date(r.timestamp) > new Date(latestByBasin[r.data.basinId].timestamp)) {
+              latestByBasin[r.data.basinId] = r;
+            }
+          }
+        });
+        // Dynamically build basins from backend data
+        const dynamicBasins = Object.entries(latestByBasin).map(([basinId, r]: [string, any]) => {
+          // Fill missing telemetry fields with defaults
+          const defaultTelemetry = {
+            co2Level: 0,
+            airTemp: 0,
+            humidity: 0,
+            soilTemp: 0,
+            soilMoisture: 0,
+            soilEC: 0,
+            soilPH: 0,
+            soilN: 0,
+            soilP: 0,
+            soilK: 0,
+            lux: 0,
+            lastSeen: new Date(r.timestamp).getTime(),
+          };
+          return {
+            id: basinId,
+            name: r.data.basinName || basinId,
+            ip: r.data.ip || '',
+            status: 'online',
+            lastUpdate: new Date(r.timestamp).getTime(),
+            telemetry: { ...defaultTelemetry, ...r.data },
+            pumps: r.data.pumps || { pump1: false, pump2: false, pump3: false, pump4: false },
+          };
+        });
+        setBasins(dynamicBasins);
+      })
+      .catch(() => setBasins([]));
+  }, []);
   
   const [currentView, setCurrentView] = useState<ViewState>('OVERVIEW');
   const [selectedBasinId, setSelectedBasinId] = useState<string | null>(null);

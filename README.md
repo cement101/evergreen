@@ -12,6 +12,3 @@ To deploy:
 1. Flash the .ino sketch to the ESP32 as usual.
 2. On your server or PC, navigate to `esp32-firmware/main/esp-backend`, run `npm install`, and then `npm start` to launch the backend.
 3. Ensure the ESP32's `serverBase` variable points to the correct IP address of your backend server.
-
-
-bbasbkjs
