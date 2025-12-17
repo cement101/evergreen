@@ -131,39 +131,12 @@ void readSensors() {
   soilN = soilSensor.getResponseBuffer(4);
   soilP = soilSensor.getResponseBuffer(5);
   soilK = soilSensor.getResponseBuffer(6);
-  delay(1000);
+  delay(2000);
 
 
-  // Soil sensor composite reads
-  // soilSensor.readHoldingRegisters(0x00, 1);
-  // soilTemp = soilSensor.getResponseBuffer(0);
-
-  // soilSensor.readHoldingRegisters(0x64, 1);
-  // soilMoisture = soilSensor.getResponseBuffer(0);
-  // soilSensor.readHoldingRegisters(0x01, 1);
-  // soilMoisture += (soilSensor.getResponseBuffer(0) << 8);
-
-  // soilSensor.readHoldingRegisters(0xD2, 1);
-  // soilEC = soilSensor.getResponseBuffer(0);
-  // soilSensor.readHoldingRegisters(0x04, 1);
-  // soilEC += (soilSensor.getResponseBuffer(0) << 8);
-
-  // soilSensor.readHoldingRegisters(0xAE, 1);
-  // soilPH = soilSensor.getResponseBuffer(0);
-  // soilSensor.readHoldingRegisters(0x02, 1);
-  // soilPH += (soilSensor.getResponseBuffer(0) << 8);
-  
-  // soilSensor.readHoldingRegisters(0x87, 1);
-  // soilN = soilSensor.getResponseBuffer(0);
-
-  // soilSensor.readHoldingRegisters(0x8A, 1);
-  // soilP = soilSensor.getResponseBuffer(0);
-
-  // soilSensor.readHoldingRegisters(0x8E, 1);
-  // soilK = soilSensor.getResponseBuffer(0);
-
-  lightSensor.readHoldingRegisters(0x08, 1);
+  lightSensor.readHoldingRegisters(0x07, 2);
   lux =  lightSensor.getResponseBuffer(0);
+  result = lightSensor.getResponseBuffer(1);
   delay(1000);
 
 }
