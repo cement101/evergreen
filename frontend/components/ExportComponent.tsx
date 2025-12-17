@@ -3,6 +3,7 @@ import { Basin } from '../types';
 import Button from './Button';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { generateCSV } from '../services/mockService';
+import { fetchReadings } from '../services/apiService';
 
 interface Props {
   basins: Basin[];
@@ -21,24 +22,20 @@ const ExportComponent: React.FC<Props> = ({ basins }) => {
     setIsExporting(true);
     
     // Simulate API delay
-    setTimeout(() => {
-      // Mock entry count calculation
-      const estimatedCount = Math.floor(Math.random() * 500) + 100;
-      const csvContent = generateCSV(selectedBasin, fromDate, toDate, estimatedCount);
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `export_${selectedBasin}_${Date.now()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      setLastExportInfo(`${estimatedCount} rows exported for ${basins.find(b => b.id === selectedBasin)?.name}`);
+    // Try to fetch real readings from backend
+    const handleExport = async () => {
+      setIsExporting(true);
+      try {
+        const readings = await fetchReadings();
+        // Optionally filter/format readings for CSV
+        const csv = generateCSV(basins, readings);
+        setCsvData(csv);
+      } catch {
+        const csv = generateCSV(basins);
+        setCsvData(csv);
+      }
       setIsExporting(false);
-    }, 1000);
+    };
   };
 
   return (
