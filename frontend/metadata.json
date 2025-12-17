@@ -1,0 +1,5 @@
+{
+  "name": "evergreen",
+  "description": "A comprehensive plant monitoring dashboard for basin telemetry, control, and historical analysis.",
+  "requestFramePermissions": []
+}
