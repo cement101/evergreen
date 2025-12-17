@@ -7,9 +7,19 @@ const SEND_INTERVAL_MS = 2000; // Send data every 2 seconds
 // Example data generator
 function generateData() {
   return {
-    basinId: 'basin-01', // Change as needed for multiple basins
+    basinId: 'basin-01',
     timestamp: new Date().toISOString(),
-    value: Math.floor(Math.random() * 100),
+    airTemp: Math.floor(Math.random() * 10) + 20,
+    humidity: Math.floor(Math.random() * 40) + 40,
+    soilTemp: Math.floor(Math.random() * 10) + 15,
+    soilMoisture: Math.floor(Math.random() * 100),
+    soilEC: Math.round(Math.random() * 200),
+    soilPH: (Math.random() * 2 + 5).toFixed(2),
+    soilN: Math.floor(Math.random() * 30),
+    soilP: Math.floor(Math.random() * 30),
+    soilK: Math.floor(Math.random() * 30),
+    co2Level: Math.floor(Math.random() * 100) + 400,
+    lux: Math.floor(Math.random() * 1000),
     status: 'ok',
   };
 }

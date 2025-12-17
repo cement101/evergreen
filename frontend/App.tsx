@@ -22,7 +22,10 @@ import Button from './components/Button';
 
 const App: React.FC = () => {
   // --- State ---
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('evergreenUser');
+    return stored ? JSON.parse(stored) : null;
+  });
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [basins, setBasins] = useState<Basin[]>([]);
     // Fetch basins/telemetry from backend on load
@@ -102,6 +105,7 @@ const App: React.FC = () => {
     const user = users.find(u => u.username === loginUsername) || null;
     if (user) {
       setCurrentUser(user);
+      localStorage.setItem('evergreenUser', JSON.stringify(user));
       setLoginUsername('');
       setCurrentView('OVERVIEW');
     } else {
@@ -111,6 +115,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    localStorage.removeItem('evergreenUser');
     setCurrentView('OVERVIEW');
     setSelectedBasinId(null);
   };
