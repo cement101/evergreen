@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Basin } from '../types';
 import Button from './Button';
 
@@ -14,19 +14,10 @@ const SENSOR_KEYS = [
   'soilEC', 'soilPH', 'soilN', 'soilP', 'soilK', 'lux',
 ];
 
-const BasinDetail: React.FC<Props> = ({ basin, onBack }) => {
-  if (!basin) {
-    return (
-      <div className="p-8 text-center text-red-500">
-        <h2 className="text-xl font-bold mb-2">No Data Available</h2>
-        <p>There is no telemetry data for this basin.</p>
-        <Button onClick={onBack} className="mt-4">Back</Button>
-      </div>
-    );
-  }
+import { fetchReadings } from '../services/apiService';
 
-  // Defensive: Fill missing telemetry fields with defaults
-  const telemetry = {
+const BasinDetail: React.FC<Props> = ({ basin, onBack }) => {
+  const [telemetry, setTelemetry] = useState(() => ({
     co2Level: 0,
     airTemp: 0,
     humidity: 0,
@@ -38,8 +29,36 @@ const BasinDetail: React.FC<Props> = ({ basin, onBack }) => {
     soilP: 0,
     soilK: 0,
     lux: 0,
-    ...(basin.telemetry || {}),
-  };
+    ...(basin?.telemetry || {}),
+  }));
+  const [lastUpdate, setLastUpdate] = useState(basin?.lastUpdate || Date.now());
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!basin) return;
+    // Poll for latest readings every 3 seconds
+    intervalRef.current = setInterval(async () => {
+      const readings = await fetchReadings();
+      const latest = readings.find((r: any) => r.data && r.data.basinId === basin.id);
+      if (latest) {
+        setTelemetry((prev) => ({ ...prev, ...latest.data }));
+        setLastUpdate(new Date(latest.timestamp).getTime());
+      }
+    }, 3000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [basin?.id]);
+
+  if (!basin) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        <h2 className="text-xl font-bold mb-2">No Data Available</h2>
+        <p>There is no telemetry data for this basin.</p>
+        <Button onClick={onBack} className="mt-4">Back</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -55,7 +74,7 @@ const BasinDetail: React.FC<Props> = ({ basin, onBack }) => {
             </span>
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">
-            IP: {basin.ip} • Last Seen: {new Date(basin.lastUpdate).toLocaleString()}
+            IP: {basin.ip} • Last Seen: {new Date(lastUpdate).toLocaleString()}
           </p>
         </div>
       </div>
