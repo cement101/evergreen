@@ -1,10 +1,40 @@
+void sendTelemetry() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  StaticJsonDocument<512> doc;
+  doc["deviceId"] = deviceId;
+  doc["co2"] = co2Level;
+  doc["airTemp"] = airTemp;
+  doc["humidity"] = humidity;
+  doc["soilTemp"] = soilTemp;
+  doc["soilMoisture"] = soilMoisture;
+  doc["soilEC"] = soilEC;
+  doc["soilPH"] = soilPH;
+  doc["soilN"] = soilN;
+  doc["soilP"] = soilP;
+  doc["soilK"] = soilK;
+  doc["lux"] = lux;
+  doc["pumpIsOn"] = pumpIsOn;
+  String json;
+  serializeJson(doc, json);
+
+  HTTPClient http;
+  String url = String(serverBase) + "/api/sensors/data";
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  int httpResponseCode = http.POST(json);
+  http.end();
+}
 // =====================
 // Includes
 // =====================
 #include <ModbusMaster.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
+
+#include <WebServer.h>
 #include <HTTPClient.h>
+// HTTP server on port 80
+WebServer server(80);
 
 
 // =====================
@@ -61,6 +91,41 @@ void setup() {
 
   delay(5000);
 
+  // HTTP GET /sensors returns sensor readings as JSON
+  server.on("/sensors", HTTP_GET, []() {
+    StaticJsonDocument<512> doc;
+    doc["co2"] = co2Level;
+    doc["airTemp"] = airTemp;
+    doc["humidity"] = humidity;
+    doc["soilTemp"] = soilTemp;
+    doc["soilMoisture"] = soilMoisture;
+    doc["soilEC"] = soilEC;
+    doc["soilPH"] = soilPH;
+    doc["soilN"] = soilN;
+    doc["soilP"] = soilP;
+    doc["soilK"] = soilK;
+    doc["lux"] = lux;
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
+  });
+
+  // HTTP POST /pump to control pump (expects JSON: {"on":true/false})
+  server.on("/pump", HTTP_POST, []() {
+    if (server.hasArg("plain")) {
+      StaticJsonDocument<128> doc;
+      DeserializationError err = deserializeJson(doc, server.arg("plain"));
+      if (!err && doc.containsKey("on")) {
+        pumpIsOn = doc["on"];
+        server.send(200, "application/json", "{\"status\":\"ok\"}");
+        return;
+      }
+    }
+    server.send(400, "application/json", "{\"error\":\"Invalid payload\"}");
+  });
+
+  server.begin();
+
 }
 
 
@@ -69,7 +134,10 @@ void setup() {
 // =====================
 void loop() {
   unsigned long now = millis();
-  
+
+  // Handle HTTP requests
+  server.handleClient();
+
   // Read sensors first so telemetry carries real values
   readSensors();
 
@@ -172,112 +240,3 @@ void readSensors() {
 void pumpSwitch(uint8_t relayNum, bool switchedOn) {
 }
 
-
-// =====================
-// Telemetry Functions
-// =====================
-
-void sendTelemetry() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("sendTelemetry: WiFi not connected");
-    return;
-  }
-
-  String url = String(serverBase) + "/telemetry"; // <<-- make sure we post to /telemetry
-  String urlAlt = String(serverBaseAlt) + "/telemetry"; // <<-- make sure we post to /telemetry
-
-
-  // enlarge JSON doc to fit all readings
-  StaticJsonDocument<512> doc;
-  doc["deviceId"] = deviceId;
-  JsonObject readings = doc.createNestedObject("readings");
-
-  // Populate readings with the globals updated in loop()
-  readings["co2Level"] = co2Level;
-  readings["airTemp"] = airTemp;
-  readings["humidity"] = humidity;
-  readings["soilTemp"] = soilTemp;
-  readings["soilMoisture"] = soilMoisture;
-  readings["soilEC"] = soilEC;
-  readings["soilPH"] = soilPH;
-  readings["soilN"] = soilN;
-  readings["soilP"] = soilP;
-  readings["soilK"] = soilK;
-  readings["lux"] = lux;
-
-
-  String payload;
-  serializeJson(doc, payload);
-
-  Serial.print("POST -> ");
-  Serial.println(url);
-  Serial.print("Payload: ");
-  Serial.println(payload);
-
-  HTTPClient http;
-  HTTPClient httpAlt;
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-
-  int code = http.POST(payload);
-  Serial.print("HTTP result code: ");
-  Serial.println(code);
-
-  if (code > 0) {
-    String resp = http.getString();
-    Serial.print("Server response: ");
-    Serial.println(resp);
-  } else {
-    Serial.print("HTTP error: ");
-    Serial.println(http.errorToString(code));
-  }
-
-  http.end();
-
-
-  httpAlt.begin(urlAlt);
-  httpAlt.addHeader("Content-Type", "application/json");
-
-  int codeAlt = httpAlt.POST(payload);
-  Serial.print("HTTP result code: ");
-  Serial.println(codeAlt);
-
-  if (codeAlt > 0) {
-    String respAlt = httpAlt.getString();
-    Serial.print("Server response: ");
-    Serial.println(respAlt);
-  } else {
-    Serial.print("HTTP error: ");
-    Serial.println(httpAlt.errorToString(codeAlt));
-  }
-
-  httpAlt.end();
-
-}
-
-
-// =====================
-// Command Handler Functions
-// =====================
-
-void pollCommands() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  HTTPClient http;
-  String url = String(serverBase) + "/command/" + deviceId;
-  http.begin(url);
-  int code = http.GET();
-  if (code == HTTP_CODE_OK) {
-    String body = http.getString();
-    StaticJsonDocument<200> doc;
-    DeserializationError err = deserializeJson(doc, body);
-    if (!err) {
-      if (doc.containsKey("commands") && doc["commands"].containsKey("pump")) {
-        pumpIsOn = doc["commands"]["pump"];
-      } else {
-        Serial.println("error while deserializing GET request");
-      }
-      // apply command to hardware here
-    }
-  }
-  http.end();
-}
